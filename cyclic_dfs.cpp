@@ -1,8 +1,8 @@
 #include <iostream>
+#include <vector>
 using namespace std;
 
-const int SIZE = 7;
-int graph[SIZE][SIZE] = {
+vector<vector<int>> adj = {
     {0, 0, 1, 0, 0, 0, 0}, // A → C
     {0, 0, 1, 0, 0, 0, 0}, // B → C
     {0, 0, 0, 0, 1, 1, 1}, // C → E, F, G
@@ -12,60 +12,93 @@ int graph[SIZE][SIZE] = {
     {0, 0, 0, 0, 0, 0, 0}  // G
 };
 
-char vertices[SIZE] = {'A', 'B', 'C', 'D', 'E', 'F', 'G'};
-int color[SIZE], parent[SIZE], cycle[SIZE], cycleLen, cycleCount = 0;
+vector<vector<int>> cycles;
+vector<int> state; // 0: unvisited, 1: visiting, 2: visited
 
-bool dfs(int v) {
-    color[v] = 1;
-    for(int u = 0; u < SIZE; u++) {
-        if(graph[v][u]) {
-            if(color[u] == 1) {
-                cycleCount++;
-                cout << "DFS - Cycle " << cycleCount << ": ";
-                cycleLen = 0;
-                cycle[cycleLen++] = u;
-                int cur = v;
-                while(cur != u) {
-                    cycle[cycleLen++] = cur;
-                    cur = parent[cur];
+void dfs(int u, vector<int>& path) {
+    state[u] = 1;
+    path.push_back(u);
+    
+    for (int v = 0; v < adj.size(); v++) {
+        if (adj[u][v]) {
+            if (state[v] == 1) {
+                // Found back edge - extract cycle
+                vector<int> cycle;
+                bool found = false;
+                for (int node : path) {
+                    if (node == v) found = true;
+                    if (found) cycle.push_back(node);
                 }
-                cycle[cycleLen++] = u;
-                for(int j = cycleLen-1; j >= 0; j--) {
-                    cout << vertices[cycle[j]];
-                    if(j > 0) cout << " ";
+                
+                // Check if this cycle is new
+                bool isNew = true;
+                for (auto& existingCycle : cycles) {
+                    if (cycle.size() == existingCycle.size()) {
+                        bool same = true;
+                        for (int i = 0; i < cycle.size(); i++) {
+                            bool found = false;
+                            for (int j = 0; j < existingCycle.size(); j++) {
+                                if (cycle[i] == existingCycle[j]) {
+                                    found = true;
+                                    break;
+                                }
+                            }
+                            if (!found) {
+                                same = false;
+                                break;
+                            }
+                        }
+                        if (same) {
+                            isNew = false;
+                            break;
+                        }
+                    }
                 }
-                cout << "\n";
-                // Don't return, continue to find more cycles
+                
+                if (isNew) cycles.push_back(cycle);
             }
-            if(color[u] == 0) {
-                parent[u] = v;
-                dfs(u);
+            else if (state[v] == 0) {
+                dfs(v, path);
             }
         }
     }
-    color[v] = 2; 
-    return false;
-}
-
-void detectCycleDFS() {
-    for(int i = 0; i < SIZE; i++) color[i] = 0, parent[i] = -1;
     
-    for(int i = 0; i < SIZE; i++) {
-        if(color[i] == 0) {
-            dfs(i);
-        }
-    }
-    
-    if(cycleCount == 0) {
-        cout << "DFS - No cycles found\n";
-    } else {
-        cout << "DFS - Total cycles found: " << cycleCount << "\n";
-    }
+    path.pop_back();
+    state[u] = 2;
 }
 
 int main() {
+    int n = adj.size();
+    state.assign(n, 0);
+    
     cout << "DFS Cycle Detection\n";
-    cout << "==================\n";
-    detectCycleDFS();
+    cout << "Graph Matrix:\n";
+    for (int i = 0; i < n; i++) {
+        for (int j = 0; j < n; j++) {
+            cout << adj[i][j] << " ";
+        }
+        cout << "\n";
+    }
+    
+    for (int i = 0; i < n; i++) {
+        if (state[i] == 0) {
+            vector<int> path;
+            dfs(i, path);
+        }
+    }
+    
+    if (!cycles.empty()) {
+        cout << "\nCycles detected: " << cycles.size() << "\n";
+        for (int i = 0; i < cycles.size(); i++) {
+            cout << "Cycle " << i + 1 << ": ";
+            for (int v : cycles[i]) {
+                cout << char('A' + v) << " ";
+            }
+            cout << "\n";
+        }
+    } else {
+        cout << "\nNo cycle detected.\n";
+    }
+    
     return 0;
 }
